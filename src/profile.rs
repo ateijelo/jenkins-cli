@@ -2,6 +2,7 @@ use config::Config;
 use directories::ProjectDirs;
 use std::{collections::HashMap, fmt::Display, path::PathBuf};
 
+#[derive(Clone)]
 pub struct Profile {
     pub username: String,
     pub password: String,
