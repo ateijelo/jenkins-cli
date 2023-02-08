@@ -28,14 +28,16 @@ struct Args {
 struct NewTask(String, u32, Sender<NewTask>);
 
 async fn _tail(
-    job: Url,
+    job_path: String,
+    job_number: u32,
     profile: Arc<Profile>,
     subjob_re: Arc<Regex>,
     tx: Sender<NewTask>,
 ) -> Result<()> {
     let client = Client::new();
+    let url = _job_url(&job_path, job_number, &profile)?;
     let resp = client
-        .get(job)
+        .get(url)
         .basic_auth(&profile.username, Some(&profile.password))
         .send()
         .await?;
@@ -46,7 +48,7 @@ async fn _tail(
             let number: u32 = captures.name("job_number").unwrap().as_str().parse()?;
             tx.send(NewTask(job, number, tx.clone())).await?;
         } else {
-            println!("{line}");
+            println!("{job_path} #{job_number}: {line}");
         }
     }
     Ok(())
@@ -66,13 +68,24 @@ async fn tail(job_path: &str, job_number: u32, profile: Profile) -> Result<()> {
         Regex::new(r"Starting building: (?P<job_name>[^\s]+) #(?P<job_number>\d+)").unwrap(),
     );
     let profile = Arc::new(profile);
-    let url = _job_url(job_path, job_number, &profile)?;
-    tokio::spawn(_tail(url, profile.clone(), subjob_re.clone(), tx));
+    tokio::spawn(_tail(
+        job_path.to_owned(),
+        job_number,
+        profile.clone(),
+        subjob_re.clone(),
+        tx,
+    ));
 
     while let Some(msg) = rx.recv().await {
         let NewTask(job_path, job_number, tx) = msg;
-        let url = _job_url(&job_path, job_number, &profile)?;
-        tokio::spawn(_tail(url, profile.clone(), subjob_re.clone(), tx));
+        // let url = _job_url(&job_path, job_number, &profile)?;
+        tokio::spawn(_tail(
+            job_path,
+            job_number,
+            profile.clone(),
+            subjob_re.clone(),
+            tx,
+        ));
     }
     Ok(())
 }
