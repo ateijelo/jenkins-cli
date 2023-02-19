@@ -1,3 +1,4 @@
+use anyhow::{bail, Result};
 use config::Config;
 use directories::ProjectDirs;
 use std::{collections::HashMap, fmt::Display, path::PathBuf};
@@ -10,10 +11,8 @@ pub struct Profile {
     pub aliases: HashMap<String, String>,
 }
 
-type Err = Box<dyn std::error::Error>;
-
 impl Profile {
-    pub fn config_path(path: &Option<String>, profile: &str) -> Result<PathBuf, Err> {
+    pub fn config_path(path: &Option<String>, profile: &str) -> Result<PathBuf> {
         if let Some(p) = path {
             // if a config file path is provided, we use it
             return Ok(PathBuf::from(p));
@@ -23,15 +22,13 @@ impl Profile {
             // then we use that
             return Ok(dirs.config_dir().join(format!("{}.toml", profile)));
         }
-        Err("No config path provided, and no standard config directory found".into())
+        bail!("No config path provided, and no standard config directory found")
     }
 
-    pub fn new(config_path: &Option<String>, profile: &str) -> Result<Self, Err> {
-        let mut builder =
-            Config::builder().add_source(config::Environment::with_prefix("JENKINS_CLI"));
+    pub fn new(config_path: &Option<String>, profile: &str) -> Result<Self> {
+        let mut builder = Config::builder();
 
         let cfg_path = Self::config_path(config_path, profile)?;
-        // println!("cfg_path: {:?}", cfg_path);
 
         if config_path.is_none() {
             if cfg_path.exists() {
@@ -40,6 +37,8 @@ impl Profile {
         } else {
             builder = builder.add_source(config::File::from(cfg_path));
         }
+
+        builder = builder.add_source(config::Environment::with_prefix("JENKINS_CLI"));
 
         let config = builder.build()?;
 
