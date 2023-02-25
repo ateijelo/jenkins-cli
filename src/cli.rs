@@ -12,7 +12,7 @@ pub struct JenkinsArgs {
     #[arg(long, default_value_t = false)]
     pub show_config: bool,
 
-    #[arg(short, long)]
+    #[arg(short, long, env = "JENKINS_CLI_CONFIG_PATH")]
     pub config_path: Option<String>,
 
     #[command(subcommand)]

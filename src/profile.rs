@@ -45,11 +45,13 @@ impl Profile {
         let url: String = config.get("url")?;
         let username: String = config.get("username")?;
         let password: String = config.get("password")?;
-        let aliases = config
-            .get_table("aliases")?
-            .iter()
-            .map(|(k, v)| (k.clone(), v.to_string()))
-            .collect();
+        let mut aliases = HashMap::new();
+        if let Ok(table) = config.get_table("aliases") {
+            aliases = table
+                .iter()
+                .map(|(k, v)| (k.clone(), v.to_string()))
+                .collect()
+        }
 
         Ok(Self {
             url,

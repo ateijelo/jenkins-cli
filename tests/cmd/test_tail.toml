@@ -1,0 +1,2 @@
+bin.name = "jenkins"
+args = ["tail", "-j", "hello", "-n", "1"]
