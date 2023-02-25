@@ -8,6 +8,7 @@ use jenkins_cli::tail::tail;
 #[tokio::main()]
 async fn main() -> Result<()> {
     let args = JenkinsArgs::parse();
+
     if args.show_config_path {
         println!(
             "{}",
@@ -15,22 +16,26 @@ async fn main() -> Result<()> {
                 .to_str()
                 .unwrap_or("")
         );
-        std::process::exit(0);
+        return Ok(());
     }
 
     let profile = Profile::new(&args.config_path, &args.profile)?;
+
     if args.show_config {
         println!("{}", profile);
+        return Ok(());
     }
 
-    match args.action {
-        jenkins_cli::cli::Action::Run => todo!(),
-        jenkins_cli::cli::Action::Tail(tail_args) => {
-            tail(&tail_args.job_name, tail_args.job_number, profile).await?
+    if let Some(action) = args.action {
+        match action {
+            jenkins_cli::cli::Action::Run => todo!(),
+            jenkins_cli::cli::Action::Tail(tail_args) => {
+                tail(&tail_args.job_name, tail_args.job_number, profile).await?
+            }
+            jenkins_cli::cli::Action::Params => todo!(),
         }
-        jenkins_cli::cli::Action::Params => todo!(),
+        return Ok(());
     }
 
-    // tail("hello-pipeline", 10, profile).await?;
     Ok(())
 }

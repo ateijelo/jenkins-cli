@@ -15,4 +15,9 @@ regex = "1.7.1"
 reqwest = { version = "0.11.14", features = ["json"] }
 serde = "1.0.152"
 tokio = { version = "1.25.0", features = ["full"] }
+trycmd = "0.14.12"
 url = "2.3.1"
+
+[[bin]]
+name = "jenkins"
+path = "src/main.rs"
