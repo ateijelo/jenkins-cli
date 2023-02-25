@@ -87,7 +87,6 @@ pub async fn tail(job_path: &str, job_number: u32, profile: Profile) -> Result<(
 
     while let Some(msg) = rx.recv().await {
         let NewTask(job_path, job_number, tx) = msg;
-        // let url = _job_url(&job_path, job_number, &profile)?;
         tasks.spawn(_tail(
             job_path,
             job_number,
@@ -99,10 +98,6 @@ pub async fn tail(job_path: &str, job_number: u32, profile: Profile) -> Result<(
 
     while let Some(result) = tasks.join_next().await {
         result??;
-        // match result {
-        //     Ok(value) => { println!("Ok: {:?}", value)},
-        //     Err(e) => bail!("Error: {}", e),
-        // }
     }
 
     Ok(())

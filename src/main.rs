@@ -4,6 +4,7 @@ use clap::Parser;
 use jenkins_cli::cli::JenkinsArgs;
 use jenkins_cli::profile::Profile;
 use jenkins_cli::tail::tail;
+use jenkins_cli::run::run;
 
 #[tokio::main()]
 async fn main() -> Result<()> {
@@ -28,7 +29,9 @@ async fn main() -> Result<()> {
 
     if let Some(action) = args.action {
         match action {
-            jenkins_cli::cli::Action::Run => todo!(),
+            jenkins_cli::cli::Action::Run(run_args) => {
+                run(&run_args.job_name, &run_args.params, profile).await?
+            }
             jenkins_cli::cli::Action::Tail(tail_args) => {
                 tail(&tail_args.job_name, tail_args.job_number, profile).await?
             }
