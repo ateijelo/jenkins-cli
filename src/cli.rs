@@ -1,5 +1,3 @@
-use anyhow::Error;
-
 use anyhow::bail;
 use anyhow::Result;
 use clap::{Args, Parser, Subcommand};

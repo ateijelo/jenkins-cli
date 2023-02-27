@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 use clap::Parser;
 
@@ -30,7 +32,8 @@ async fn main() -> Result<()> {
     if let Some(action) = args.action {
         match action {
             jenkins_cli::cli::Action::Run(run_args) => {
-                run(&run_args.job_name, &run_args.params, profile).await?
+                let params = HashMap::from_iter(run_args.params);
+                run(&run_args.job_name, &params, profile).await?
             }
             jenkins_cli::cli::Action::Tail(tail_args) => {
                 tail(&tail_args.job_name, tail_args.job_number, profile).await?
