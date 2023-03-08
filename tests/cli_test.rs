@@ -73,7 +73,7 @@ async fn mount_tail_with_more_data(mock_server: &MockServer) {
 
 async fn mount_job(mock_server: &MockServer, job_path: &str, output: &str) {
     Mock::given(method("GET"))
-        .and(path(job_path))
+        .and(path(format!("/job/{job_path}/logText/progressiveText")))
         .and(query_param("start", "0"))
         .respond_with(
             ResponseTemplate::new(200)
@@ -136,27 +136,12 @@ async fn test_tail_with_subjobs() -> Result<()> {
     let subjob2 = "CCCC";
     let subjob3 = "DDDD";
 
+    mount_job(&testenv.mock_server, "mainjob/1", mainjob).await;
+    mount_job(&testenv.mock_server, "subjob1/10", subjob1).await;
+    mount_job(&testenv.mock_server, "Folder%20A/job/subjob2/20", subjob2).await;
     mount_job(
         &testenv.mock_server,
-        "/job/mainjob/1/logText/progressiveText",
-        mainjob,
-    )
-    .await;
-    mount_job(
-        &testenv.mock_server,
-        "/job/subjob1/10/logText/progressiveText",
-        subjob1,
-    )
-    .await;
-    mount_job(
-        &testenv.mock_server,
-        "/job/Folder%20A/job/subjob2/20/logText/progressiveText",
-        subjob2,
-    )
-    .await;
-    mount_job(
-        &testenv.mock_server,
-        "/job/Folder%20A/job/Folder%20B/job/subjob3/30/logText/progressiveText",
+        "Folder%20A/job/Folder%20B/job/subjob3/30",
         subjob3,
     )
     .await;
@@ -182,7 +167,7 @@ async fn test_that_subjob_regex_is_anchored_to_beginning_of_line() -> Result<()>
 
     mount_job(
         &testenv.mock_server,
-        "/job/hello/1/logText/progressiveText",
+        "hello/1",
         "This is not a subjob Starting building: hello #1",
     )
     .await;
