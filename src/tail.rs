@@ -14,7 +14,6 @@ use crate::profile::Profile;
 struct NewTask(String, u32, Sender<NewTask>);
 
 fn _job_url(job_path: &str, job_number: u32, start: u32, profile: &Profile) -> Result<Url> {
-    // "job/hello-pipeline/5/logText/progressiveText?start=0".to_owned(),
     let full_path = format!("job/{job_path}/{job_number}/logText/progressiveText?start={start}");
     Ok(Url::parse(&profile.url)?.join(&full_path)?)
 }
@@ -42,11 +41,11 @@ async fn _tail(
         for line in resp.text().await?.lines() {
             if let Some(captures) = subjob_re.captures(line) {
                 let job = captures.name("job_name").unwrap().as_str().to_owned();
+                let job = job.replace(" » ", "/job/");
                 let number: u32 = captures.name("job_number").unwrap().as_str().parse()?;
                 tx.send(NewTask(job, number, tx.clone())).await?;
-            } else {
-                println!("{job_path} #{job_number}: {line}");
             }
+            println!("{} #{job_number}: {line}", job_path.replace("/job/", " » "));
         }
 
         let mut more = false;
@@ -73,7 +72,7 @@ pub async fn tail(job_path: &str, job_number: u32, profile: Profile) -> Result<(
     let (tx, mut rx) = channel(8);
 
     let subjob_re = Arc::new(
-        Regex::new(r"Starting building: (?P<job_name>[^\s]+) #(?P<job_number>\d+)").unwrap(),
+        Regex::new(r"^Starting building: (?P<job_name>.+) #(?P<job_number>\d+)$").unwrap(),
     );
     let profile = Arc::new(profile);
     let mut tasks = JoinSet::new();

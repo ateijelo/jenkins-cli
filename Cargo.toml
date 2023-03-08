@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.69"
+assert_cmd = { version = "2.0.8", features = ["color-auto"] }
 clap = { version = "4.1.4", features = ["derive", "env"] }
 config = "0.13.3"
 directories = "4.0.1"
