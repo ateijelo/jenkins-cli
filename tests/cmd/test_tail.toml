@@ -1,2 +1,2 @@
 bin.name = "jenkins"
-args = ["tail", "-j", "hello", "-n", "1"]
+args = ["tail", "/job/hello/1"]

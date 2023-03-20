@@ -1,12 +1,13 @@
 use anyhow::bail;
 use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
+use reqwest::Url;
 
 #[derive(Parser, Debug)]
 #[command(arg_required_else_help = true)]
 pub struct JenkinsArgs {
-    #[arg(short, long, env = "JENKINS_CLI_PROFILE", default_value = "default")]
-    pub profile: String,
+    #[arg(short, long)]
+    pub profile: Option<String>,
 
     #[arg(long, default_value_t = false)]
     pub show_config_path: bool,
@@ -31,11 +32,8 @@ pub enum Action {
 #[derive(Args, Debug)]
 #[command(arg_required_else_help = true)]
 pub struct TailArgs {
-    #[arg(short, short = 'j', long)]
-    pub job_name: String,
-
-    #[arg(short, short = 'n', long)]
-    pub job_number: u32,
+    #[arg()]
+    pub job_url: String,
 }
 
 fn parse_param(param: &str) -> Result<(String, String)> {
@@ -51,8 +49,8 @@ fn parse_param(param: &str) -> Result<(String, String)> {
 #[derive(Args, Debug)]
 #[command(arg_required_else_help = true)]
 pub struct RunArgs {
-    #[arg(short, long)]
-    pub job_name: String,
+    #[arg()]
+    pub job_name: Url,
 
     #[arg(value_parser=parse_param)]
     pub params: Vec<(String, String)>,

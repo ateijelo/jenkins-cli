@@ -4,9 +4,9 @@ use anyhow::Result;
 use clap::Parser;
 
 use jenkins_cli::cli::JenkinsArgs;
-use jenkins_cli::profile::Profile;
-use jenkins_cli::tail::tail;
+use jenkins_cli::config::JenkinsConfig;
 use jenkins_cli::run::run;
+use jenkins_cli::tail::tail;
 
 #[tokio::main()]
 async fn main() -> Result<()> {
@@ -15,28 +15,32 @@ async fn main() -> Result<()> {
     if args.show_config_path {
         println!(
             "{}",
-            Profile::config_path(&args.config_path, &args.profile)?
+            JenkinsConfig::config_path(&args.config_path)?
                 .to_str()
                 .unwrap_or("")
         );
         return Ok(());
     }
 
-    let profile = Profile::new(&args.config_path, &args.profile)?;
+    let mut config = JenkinsConfig::new(&args.config_path)?;
 
     if args.show_config {
-        println!("{}", profile);
+        println!("{:?}", config);
         return Ok(());
+    }
+
+    if let Some(p) = args.profile {
+        config.select_profile(&p);
     }
 
     if let Some(action) = args.action {
         match action {
             jenkins_cli::cli::Action::Run(run_args) => {
                 let params = HashMap::from_iter(run_args.params);
-                run(&run_args.job_name, &params, profile).await?
+                run(&run_args.job_name, &params, config).await?
             }
             jenkins_cli::cli::Action::Tail(tail_args) => {
-                tail(&tail_args.job_name, tail_args.job_number, profile).await?
+                tail(tail_args.job_url, config).await?
             }
             jenkins_cli::cli::Action::Params => todo!(),
         }

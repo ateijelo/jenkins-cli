@@ -7,7 +7,7 @@ use std::{
 };
 use url::Url;
 
-use crate::{profile::Profile, tail::tail};
+use crate::{config::JenkinsConfig, job::Job, tail::tail};
 
 #[derive(Deserialize, Debug)]
 struct QueueResponse {
@@ -25,6 +25,7 @@ struct Task {
 #[derive(Deserialize, Debug)]
 struct Executable {
     number: u32,
+    url: String,
 }
 
 async fn resp_error(resp: Response, msg: &str) -> Result<String> {
@@ -37,24 +38,17 @@ async fn resp_error(resp: Response, msg: &str) -> Result<String> {
     ))
 }
 
-pub async fn run(
-    job_path: &str,
-    job_params: &HashMap<String, String>,
-    profile: Profile,
-) -> Result<()> {
+pub async fn run(job: &Url, params: &HashMap<String, String>, config: JenkinsConfig) -> Result<()> {
     let client = Client::new();
 
-    let full_path = if job_params.is_empty() {
-        format!("job/{job_path}/build")
-    } else {
-        format!("job/{job_path}/buildWithParameters")
-    };
-
-    let url = Url::parse(&profile.url)?.join(&full_path)?;
+    let job = Job::new(job)?;
+    let full_path = job.build_path(params);
+    let profile = config.profile()?;
+    let url = profile.url()?.join(&full_path)?;
     let resp = client
         .post(url)
         .basic_auth(&profile.username, Some(&profile.password))
-        .form(job_params)
+        .form(params)
         .send()
         .await?;
 
@@ -94,7 +88,7 @@ pub async fn run(
         if let Some(task) = queue_resp.task {
             if let Some(exec) = queue_resp.executable {
                 println!("Tailing job {} #{}:", task.name, exec.number);
-                tail(&task.name, exec.number, profile).await?;
+                tail(exec.url, config).await?;
                 break;
             }
         }

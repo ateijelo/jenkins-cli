@@ -20,15 +20,18 @@ async fn setup_test() -> Result<TestEnv> {
     let mock_server = MockServer::start().await;
 
     let dir = TempDir::new("jenkins-cli-tests")?;
-    let cfg_path = dir.path().join("cfg.toml");
+    let cfg_path = dir.path().join("cfg.yaml");
     let mut cfg_file = File::create(&cfg_path)?;
 
     writeln!(
         cfg_file,
         r#"
-        url = "{}"
-        username = "test"
-        password = "test"
+        profile: test
+        profiles:
+          test:
+            url: {}
+            username: test
+            password: test
         "#,
         &mock_server.uri()
     )?;
@@ -73,7 +76,7 @@ async fn mount_tail_with_more_data(mock_server: &MockServer) {
 
 async fn mount_job(mock_server: &MockServer, job_path: &str, output: &str) {
     Mock::given(method("GET"))
-        .and(path(format!("/job/{job_path}/logText/progressiveText")))
+        .and(path(format!("{job_path}/logText/progressiveText")))
         .and(query_param("start", "0"))
         .respond_with(
             ResponseTemplate::new(200)
@@ -90,28 +93,12 @@ async fn mount_job(mock_server: &MockServer, job_path: &str, output: &str) {
 
 #[tokio::test]
 async fn test_cli() -> Result<()> {
-    let mock_server = MockServer::start().await;
+    let testenv = setup_test().await?;
 
-    mount_tail_with_more_data(&mock_server).await;
-
-    let dir = TempDir::new("jenkins-cli-tests")?;
-    let cfg_path = dir.path().join("cfg.toml");
-    let mut cfg_file = File::create(&cfg_path)?;
-
-    writeln!(
-        cfg_file,
-        r#"
-        url = "{}"
-        username = "test"
-        password = "test"
-        "#,
-        &mock_server.uri()
-    )?;
-
-    cfg_file.flush()?;
+    mount_tail_with_more_data(&testenv.mock_server).await;
 
     trycmd::TestCases::new()
-        .env("JENKINS_CLI_CONFIG_PATH", cfg_path.to_str().unwrap())
+        .env("JENKINS_CLI_CONFIG_PATH", testenv.cfg_path)
         .case("tests/cmd/*.toml")
         .case("README.md");
     Ok(())
@@ -136,22 +123,28 @@ async fn test_tail_with_subjobs() -> Result<()> {
     let subjob2 = "CCCC";
     let subjob3 = "DDDD";
 
-    mount_job(&testenv.mock_server, "mainjob/1", mainjob).await;
-    mount_job(&testenv.mock_server, "subjob1/10", subjob1).await;
-    mount_job(&testenv.mock_server, "Folder%20A/job/subjob2/20", subjob2).await;
+    mount_job(&testenv.mock_server, "/job/mainjob/1", mainjob).await;
+    mount_job(&testenv.mock_server, "/job/subjob1/10", subjob1).await;
     mount_job(
         &testenv.mock_server,
-        "Folder%20A/job/Folder%20B/job/subjob3/30",
+        "/job/Folder%20A/job/subjob2/20",
+        subjob2,
+    )
+    .await;
+    mount_job(
+        &testenv.mock_server,
+        "/job/Folder%20A/job/Folder%20B/job/subjob3/30",
         subjob3,
     )
     .await;
 
     let mut cmd = assert_cmd::Command::cargo_bin("jenkins").unwrap();
     let output = cmd
-        .args(["tail", "-j", "mainjob", "-n", "1"])
+        .args(["tail", "/job/mainjob/1"])
         .env("JENKINS_CLI_CONFIG_PATH", testenv.cfg_path)
         .output()?;
     let stdout = String::from_utf8(output.stdout)?;
+    dbg!(&stdout);
 
     assert!(stdout.contains("mainjob #1: AAAA"));
     assert!(stdout.contains("subjob1 #10: BBBB"));
@@ -167,14 +160,14 @@ async fn test_that_subjob_regex_is_anchored_to_beginning_of_line() -> Result<()>
 
     mount_job(
         &testenv.mock_server,
-        "hello/1",
+        "/job/hello/1",
         "This is not a subjob Starting building: hello #1",
     )
     .await;
 
     let mut cmd = assert_cmd::Command::cargo_bin("jenkins").unwrap();
     let assert = cmd
-        .args(["tail", "-j", "hello", "-n", "1"])
+        .args(["tail", "/job/hello/1"])
         .env("JENKINS_CLI_CONFIG_PATH", testenv.cfg_path)
         .assert();
     assert

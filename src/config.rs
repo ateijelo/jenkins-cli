@@ -1,18 +1,34 @@
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use config::Config;
 use directories::ProjectDirs;
+use reqwest::Url;
+use serde::Deserialize;
 use std::{collections::HashMap, fmt::Display, path::PathBuf};
 
-#[derive(Clone)]
+
+#[derive(Debug, Deserialize)]
 pub struct Profile {
     pub username: String,
     pub password: String,
-    pub url: String,
+    url: String,
+    #[serde(default)]
     pub aliases: HashMap<String, String>,
 }
 
 impl Profile {
-    pub fn config_path(path: &Option<String>, profile: &str) -> Result<PathBuf> {
+    pub fn url(&self) -> Result<Url> {
+        Ok(Url::parse(&self.url)?)
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct JenkinsConfig {
+    profile: String,
+    profiles: HashMap<String, Profile>,
+}
+
+impl JenkinsConfig {
+    pub fn config_path(path: &Option<String>) -> Result<PathBuf> {
         if let Some(p) = path {
             // if a config file path is provided, we use it
             return Ok(PathBuf::from(p));
@@ -20,15 +36,20 @@ impl Profile {
         if let Some(dirs) = ProjectDirs::from("", "", "jenkins-cli") {
             // if no config file was provided, but a standard profile exists
             // then we use that
-            return Ok(dirs.config_dir().join(format!("{}.toml", profile)));
+            for ext in ["toml", "yaml", "yml"] {
+                let p = dirs.config_dir().join(format!("config.{}", ext));
+                if p.exists() {
+                    return Ok(p);
+                }
+            }
         }
         bail!("No config path provided, and no standard config directory found")
     }
 
-    pub fn new(config_path: &Option<String>, profile: &str) -> Result<Self> {
+    pub fn new(config_path: &Option<String>) -> Result<Self> {
         let mut builder = Config::builder();
 
-        let cfg_path = Self::config_path(config_path, profile)?;
+        let cfg_path = Self::config_path(config_path)?;
 
         if config_path.is_none() {
             if cfg_path.exists() {
@@ -42,23 +63,17 @@ impl Profile {
 
         let config = builder.build()?;
 
-        let url: String = config.get("url")?;
-        let username: String = config.get("username")?;
-        let password: String = config.get("password")?;
-        let mut aliases = HashMap::new();
-        if let Ok(table) = config.get_table("aliases") {
-            aliases = table
-                .iter()
-                .map(|(k, v)| (k.clone(), v.to_string()))
-                .collect()
-        }
+        config.try_deserialize().map_err(anyhow::Error::from)
+    }
+    
+    pub fn select_profile(&mut self, profile: &str) {
+        self.profile = profile.to_owned();
+    }
 
-        Ok(Self {
-            url,
-            username,
-            password,
-            aliases,
-        })
+    pub fn profile(&self) -> Result<&Profile> {
+        self.profiles
+            .get(&self.profile)
+            .ok_or(anyhow!("profile not found"))
     }
 }
 
