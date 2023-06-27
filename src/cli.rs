@@ -26,12 +26,19 @@ pub struct JenkinsArgs {
 pub enum Action {
     Run(RunArgs),
     Tail(TailArgs),
-    Params,
+    Params(ParamsArgs),
 }
 
 #[derive(Args, Debug)]
 #[command(arg_required_else_help = true)]
 pub struct TailArgs {
+    #[arg()]
+    pub job_url: String,
+}
+
+#[derive(Args, Debug)]
+#[command(arg_required_else_help = true)]
+pub struct ParamsArgs {
     #[arg()]
     pub job_url: String,
 }

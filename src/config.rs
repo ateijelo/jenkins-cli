@@ -73,7 +73,7 @@ impl JenkinsConfig {
     pub fn profile(&self) -> Result<&Profile> {
         self.profiles
             .get(&self.profile)
-            .ok_or(anyhow!("profile not found"))
+            .ok_or_else(|| anyhow!("profile not found"))
     }
 }
 

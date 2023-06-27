@@ -7,6 +7,7 @@ use jenkins_cli::cli::JenkinsArgs;
 use jenkins_cli::config::JenkinsConfig;
 use jenkins_cli::run::run;
 use jenkins_cli::tail::tail;
+use jenkins_cli::params::params;
 
 #[tokio::main()]
 async fn main() -> Result<()> {
@@ -42,7 +43,9 @@ async fn main() -> Result<()> {
             jenkins_cli::cli::Action::Tail(tail_args) => {
                 tail(tail_args.job_url, config).await?
             }
-            jenkins_cli::cli::Action::Params => todo!(),
+            jenkins_cli::cli::Action::Params(params_args) => {
+                params(params_args.job_url, config).await?
+            }
         }
         return Ok(());
     }

@@ -17,8 +17,10 @@ lazy_static! {
     ).unwrap();
 }
 
+type Params = HashMap<String, String>;
+
 // A Jenkins job
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Job {
     path: Vec<String>,
     base_url: Url,
@@ -62,8 +64,8 @@ impl Job {
         bail!("Failed to parse job from url: {}", url);
     }
 
-    pub fn build_path(&self, params: &HashMap<String, String>) -> String {
-        let mut path = format!("job/{}/build", self.path.join("/"));
+    pub fn build_path(&self, params: &Params) -> String {
+        let mut path = format!("job/{}/build", self.path.join("/job/"));
         if !params.is_empty() {
             path.push_str("WithParameters");
         }
@@ -78,7 +80,7 @@ impl Display for Job {
 }
 
 // A particular build of a Jenkins job
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct JobBuild {
     job: Job,
     number: u32,
@@ -111,6 +113,15 @@ impl JobBuild {
         );
         Ok(self.job.base_url.join(&path)?)
     }
+
+    pub fn params_path(&self) -> Result<Url> {
+        let path = format!(
+            "job/{}/{}/parameters",
+            self.job.path.join("/job/"),
+            self.number
+        );
+        Ok(self.job.base_url.join(&path)?)
+    }
 }
 
 impl Display for JobBuild {
@@ -123,21 +134,9 @@ impl Display for JobBuild {
 mod tests {
     use super::*;
 
-    // #[test]
-    // fn test_classic_job_url() {
-    //     let b = JobBuild::parse("job/helloworld/1").unwrap();
-    //     assert_eq!(
-    //         b,
-    //         JobBuild {
-    //             job: Job::parse("job/helloworld").unwrap(),
-    //             number: 1
-    //         }
-    //     );
-    // }
-
     #[test]
     fn test_classic_job_display() -> Result<()> {
-        let u = Url::parse("http://invalid.com/job/")?;
+        let u = Url::parse("http://jenkins.invalid/job/")?;
 
         let job = Job::new(&u.join("x")?)?;
         assert_eq!(format!("{job}"), "x");
@@ -161,8 +160,37 @@ mod tests {
     }
 
     #[test]
+    fn test_job_build_path() -> Result<()> {
+        let u = Url::parse("http://jenkins.invalid/job/")?;
+
+        let params: Params = [
+            ("a".to_owned(), "1".to_owned()),
+            ("b".to_owned(), "2".to_owned()),
+        ]
+        .iter()
+        .cloned()
+        .collect();
+
+        let no_params = Params::new();
+
+        let job = Job::new(&u.join("x")?)?;
+        assert_eq!(job.build_path(&no_params), "job/x/build");
+
+        let job = Job::new(&u.join("x")?)?;
+        assert_eq!(job.build_path(&params), "job/x/buildWithParameters");
+
+        let job = Job::new(&u.join("x/job/y")?)?;
+        assert_eq!(job.build_path(&no_params), "job/x/job/y/build");
+
+        let job = Job::new(&u.join("x/job/y")?)?;
+        assert_eq!(job.build_path(&params), "job/x/job/y/buildWithParameters");
+
+        Ok(())
+    }
+
+    #[test]
     fn test_blue_job_display() -> Result<()> {
-        let u = Url::parse("http://invalid.com/blue/organizations/jenkins/")?;
+        let u = Url::parse("http://jenkins.invalid/blue/organizations/jenkins/")?;
 
         let job = Job::new(&u.join("x")?)?;
         assert_eq!(format!("{job}"), "x");
@@ -187,7 +215,7 @@ mod tests {
 
     #[test]
     fn test_classic_build_display() -> Result<()> {
-        let u = Url::parse("http://invalid.com/job/")?;
+        let u = Url::parse("http://jenkins.invalid/job/")?;
 
         let b = JobBuild::new(&u.join("x/2")?)?;
         assert_eq!(format!("{b}"), "x #2");
@@ -206,7 +234,7 @@ mod tests {
 
     #[test]
     fn test_blue_build_display() -> Result<()> {
-        let u = Url::parse("http://invalid.com/blue/organizations/jenkins/")?;
+        let u = Url::parse("http://jenkins.invalid/blue/organizations/jenkins/")?;
 
         let b = JobBuild::new(&u.join("x/detail/x/2/changes")?)?;
         assert_eq!(format!("{b}"), "x #2");
@@ -225,30 +253,30 @@ mod tests {
 
     #[test]
     fn test_log_path() -> Result<()> {
-        let u = Url::parse("http://invalid.com/blue/organizations/jenkins/")?;
+        let u = Url::parse("http://jenkins.invalid/blue/organizations/jenkins/")?;
         let b = JobBuild::new(&u.join("x/detail/x/2/changes")?)?;
         assert_eq!(
             b.log_path(0)?,
-            Url::parse("http://invalid.com/job/x/2/logText/progressiveText?start=0")?
+            Url::parse("http://jenkins.invalid/job/x/2/logText/progressiveText?start=0")?
         );
         let b = JobBuild::new(&u.join("folder%20a%2Fjob%20b/detail/job%20b/2/changes")?)?;
         assert_eq!(
             b.log_path(0)?,
             Url::parse(
-                "http://invalid.com/job/folder a/job/job b/2/logText/progressiveText?start=0"
+                "http://jenkins.invalid/job/folder a/job/job b/2/logText/progressiveText?start=0"
             )?
         );
 
-        let u = Url::parse("http://invalid.com/job/")?;
+        let u = Url::parse("http://jenkins.invalid/job/")?;
         let b = JobBuild::new(&u.join("x/2")?)?;
         assert_eq!(
             b.log_path(0)?,
-            Url::parse("http://invalid.com/job/x/2/logText/progressiveText?start=0")?
+            Url::parse("http://jenkins.invalid/job/x/2/logText/progressiveText?start=0")?
         );
         let b = JobBuild::new(&u.join("a/job/b/2")?)?;
         assert_eq!(
             b.log_path(0)?,
-            Url::parse("http://invalid.com/job/a/job/b/2/logText/progressiveText?start=0")?
+            Url::parse("http://jenkins.invalid/job/a/job/b/2/logText/progressiveText?start=0")?
         );
 
         Ok(())
