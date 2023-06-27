@@ -94,3 +94,17 @@ pub async fn tail(job: String, config: JenkinsConfig) -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use super::*;
+
+    #[test]
+    fn test_newtask_debug() {
+        let (tx, _) = channel(8);
+        let t = NewTask(Url::from_str("http://example.com").unwrap(), tx);
+        assert!(format!("{:?}", t).contains("example.com"));
+    }
+}
