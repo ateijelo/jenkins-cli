@@ -81,7 +81,7 @@ impl Display for Profile {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "url: {}", self.url)?;
         writeln!(f, "username: {}", self.username)?;
-        writeln!(f, "password: {}", "*".repeat(self.password.len()))?;
+        writeln!(f, "password: ****")?;
         write!(f, "aliases: {:?}", self.aliases)
     }
 }

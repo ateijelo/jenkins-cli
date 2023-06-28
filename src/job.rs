@@ -116,7 +116,7 @@ impl JobBuild {
 
     pub fn params_path(&self) -> Result<Url> {
         let path = format!(
-            "job/{}/{}/parameters",
+            "job/{}/{}/api/json?tree=actions[parameters[name,value]]",
             self.job.path.join("/job/"),
             self.number
         );
